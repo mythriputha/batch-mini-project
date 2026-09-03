@@ -7,7 +7,7 @@
 
 # COMMAND ----------
 
-dbutils.widgets.text("catalog", "main", "Catalog")
+dbutils.widgets.text("catalog", "dbx_batch_mini_ws", "Catalog")
 dbutils.widgets.text("schema", "batch_mini_project", "Schema")
 dbutils.widgets.text("volume", "landing", "Volume")
 
