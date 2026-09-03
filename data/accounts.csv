@@ -1,0 +1,6 @@
+account_id,customer_id,account_type,base_currency,status
+A001,C001,Individual,USD,ACTIVE
+A002,C002,Individual,USD,ACTIVE
+A003,C003,Institutional,SGD,ACTIVE
+A004,C004,Individual,GBP,ACTIVE
+A005,C005,Institutional,USD,CLOSED

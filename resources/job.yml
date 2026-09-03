@@ -1,0 +1,59 @@
+# Lakeflow Job / Declarative Automation Bundle resource definition
+# Deploy with: databricks bundle deploy -t dev   (from the bundle root, alongside databricks.yml)
+resources:
+  jobs:
+    batch_etl_job:
+      name: batch-mini-project-etl
+      tasks:
+        - task_key: ingest_validate
+          notebook_task:
+            notebook_path: ../src/01_batch_pipeline
+            base_parameters:
+              catalog: "main"
+              schema: "batch_mini_project"
+              volume: "landing"
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "Standard_DS3_v2"
+            num_workers: 0
+
+        - task_key: bronze_to_silver
+          depends_on:
+            - task_key: ingest_validate
+          notebook_task:
+            notebook_path: ../src/01_batch_pipeline
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "Standard_DS3_v2"
+            num_workers: 0
+
+        - task_key: quality_gate
+          depends_on:
+            - task_key: bronze_to_silver
+          sql_task:
+            file:
+              path: ../sql/validation.sql
+            warehouse_id: "<sql-warehouse-id>"
+
+        - task_key: silver_to_gold
+          depends_on:
+            - task_key: quality_gate
+          notebook_task:
+            notebook_path: ../src/01_batch_pipeline
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            node_type_id: "Standard_DS3_v2"
+            num_workers: 0
+
+        - task_key: publish_notify
+          depends_on:
+            - task_key: silver_to_gold
+          notification_settings:
+            on_failure: ["you@example.com"]
+          run_job_task:
+            job_id: 0 # placeholder — replace with a downstream job id, or remove this task
+
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "UTC"
+        pause_status: "PAUSED"

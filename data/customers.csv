@@ -1,0 +1,6 @@
+customer_id,customer_name,segment,country,signup_date
+C001,Alice Johnson,Retail,US,2019-03-12
+C002,Bob Smith,Retail,US,2020-07-01
+C003,Charlie Lee,Institutional,SG,2018-11-23
+C004,Diana Prince,Retail,UK,2021-01-15
+C005,Ethan Brown,Institutional,US,2017-05-30
