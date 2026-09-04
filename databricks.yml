@@ -1,0 +1,12 @@
+bundle:
+  name: batch-mini-project
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405609641126577.17.azuredatabricks.net

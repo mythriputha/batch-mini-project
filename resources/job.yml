@@ -1,57 +1,31 @@
-# Lakeflow Job / Declarative Automation Bundle resource definition
+# Lakeflow Job / Databricks Asset Bundle resource definition
 # Deploy with: databricks bundle deploy -t dev   (from the bundle root, alongside databricks.yml)
+#
+# This project's pipeline is a single notebook (src/01_batch_pipeline.py) that runs
+# Bronze -> Silver (+Quarantine) -> Gold end to end, so this job has 2 real tasks:
+# run the pipeline once, then run the SQL validation queries as a quality gate.
 resources:
   jobs:
     batch_etl_job:
       name: batch-mini-project-etl
       tasks:
-        - task_key: ingest_validate
+        - task_key: run_pipeline
           notebook_task:
             notebook_path: ../src/01_batch_pipeline
             base_parameters:
-              catalog: "main"
+              catalog: "dbx_batch_mini_ws"
               schema: "batch_mini_project"
               volume: "landing"
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "Standard_DS3_v2"
-            num_workers: 0
-
-        - task_key: bronze_to_silver
-          depends_on:
-            - task_key: ingest_validate
-          notebook_task:
-            notebook_path: ../src/01_batch_pipeline
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "Standard_DS3_v2"
-            num_workers: 0
 
         - task_key: quality_gate
           depends_on:
-            - task_key: bronze_to_silver
+            - task_key: run_pipeline
           sql_task:
             file:
-              path: ../sql/validation.sql
+              path: ../sql/validation_scheduled.sql
             warehouse_id: "<sql-warehouse-id>"
-
-        - task_key: silver_to_gold
-          depends_on:
-            - task_key: quality_gate
-          notebook_task:
-            notebook_path: ../src/01_batch_pipeline
-          new_cluster:
-            spark_version: "15.4.x-scala2.12"
-            node_type_id: "Standard_DS3_v2"
-            num_workers: 0
-
-        - task_key: publish_notify
-          depends_on:
-            - task_key: silver_to_gold
           notification_settings:
-            on_failure: ["you@example.com"]
-          run_job_task:
-            job_id: 0 # placeholder — replace with a downstream job id, or remove this task
+            on_failure: ["puthamythri@gmail.com"]
 
       schedule:
         quartz_cron_expression: "0 0 6 * * ?"
