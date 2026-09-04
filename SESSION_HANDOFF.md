@@ -1,6 +1,6 @@
 # Session Handoff — Databricks Batch Mini Project
 
-Status as of 2026-09-03. This project is **fully working end-to-end** on Azure Databricks and pushed to GitHub. This file exists so a new Claude Code session (e.g. on a different machine) can pick up exactly where the previous one left off instead of re-deriving everything from scratch.
+Status as of 2026-09-04. This project is **fully working end-to-end** on Azure Databricks and pushed to GitHub — both the main pipeline notebook and a second Delta Lake exercises notebook. This file exists so a new Claude Code session (e.g. on a different machine) can pick up exactly where the previous one left off instead of re-deriving everything from scratch.
 
 **How to use this file on a new machine:** clone this repo, open the folder in Claude Code, and say something like *"Read SESSION_HANDOFF.md and continue from there"*. Point Claude at this file explicitly — it won't be loaded automatically the way `CLAUDE.md` is.
 
@@ -67,15 +67,27 @@ Both fixes are in the `main` branch on GitHub already — no action needed unles
 - A GitHub Data Loss Prevention gotcha specific to this office PC: an "Endpoint Data Loss Prevention Plus" agent blocked in-browser file uploads to `*.azuredatabricks.net` (flagged as upload to outside the org boundary). Worked around by installing the Databricks CLI and using `databricks workspace import` / `databricks fs cp` instead of drag-and-drop. **This is specific to this managed office machine — your personal laptop likely won't have this restriction**, so plain browser upload/import should just work there.
 - Two old duplicate notebook copies (one directly in the user Home folder, one that ended up in a `Drafts` folder) have been deleted — the **only** notebook copy that should exist going forward is the one inside the `batch-mini-project` Git folder.
 
-## Saved artifacts inside Databricks (not in git, workspace-only)
+## Second notebook: `src/02_delta_lake_exercises.ipynb` — DONE, pushed to GitHub
 
-- SQL query saved as **`batch_mini_project_validation`** in Databricks Queries (contents = `sql/validation.sql` with `<catalog>.<schema>` replaced by `dbx_batch_mini_ws.batch_mini_project`).
+A hands-on Delta Lake feature walkthrough, built directly in the `batch-mini-project` Git folder in Databricks (not something scaffolded from the original README — it was created ad hoc as an extension of the project). Fully complete and pushed. Covers, in order:
+- `DESCRIBE HISTORY` on `silver_trades`
+- `UPDATE` mutations and re-querying to see the change
+- A dedicated `delta_time_travel_test` table: create → mutate → `DESCRIBE HISTORY` → time travel query (`VERSION AS OF 0`) to see pre-mutation data
+- **Schema enforcement test**: an `INSERT` deliberately tries to put the string `'NOT_A_NUMBER'` into a `DECIMAL(18,4)` column. This is *supposed* to fail with `CAST_INVALID_INPUT` — that failure is the correct, intended result (proves Delta rejects malformed writes rather than silently corrupting data). A markdown cell right after it documents this explicitly so it doesn't get mistaken for a bug on a re-read.
+  - **Gotcha for "Run all":** because this cell always fails on purpose, clicking **Run all** on this notebook will always stop there and mark every cell below as "Skipped." Use **Run all below** (the dropdown next to any cell's ▶ button) starting from the cell *after* the intentional failure to execute the rest. This is expected notebook behavior, not something to fix.
+- Append vs. overwrite semantics on a scratch table `overwrite_append_test`: `INSERT INTO` (append) vs `INSERT OVERWRITE` (replace all rows)
+- **OPTIMIZE**: `DESCRIBE DETAIL` before/after to see file-count reduction after compaction
+- **VACUUM**: a `DRY RUN` first, then a real `VACUUM` on `overwrite_append_test`. Note: **Serverless SQL compute blocks overriding `spark.databricks.delta.retentionDurationCheck.enabled`** (`CONFIG_NOT_AVAILABLE.WITHOUT_SUGGESTION`, SQLSTATE 42K01) — this is a platform restriction on serverless, not a mistake. So VACUUM was run with the **default 7-day retention** instead of forcing `RETAIN 0 HOURS`; since the table was brand new, it correctly reported 0 files removed, which itself demonstrates the safety mechanism working as intended. Confirmed via `DESCRIBE HISTORY` showing `VACUUM START`/`VACUUM END` with `status: COMPLETED`.
+
+## Saved artifacts — now version-controlled (previously workspace-only)
+
+- SQL query `batch_mini_project_validation` is now saved as `src/batch_mini_project_validation.dbquery.ipynb` and pushed to GitHub — no longer a workspace-only artifact as earlier notes said.
 
 ## What's NOT done yet / open options
 
-Nothing is broken or blocking — the project fully works. These are optional next steps that were offered but not yet chosen:
-1. **Test the quarantine/DQ path** — deliberately introduce a bad row (e.g. negative quantity, invalid `side`) into a CSV, re-upload, re-run, and confirm `Quarantined rows` goes above 0 while reconciliation still holds `True`.
-2. **Deploy as a scheduled job** — `resources/job.yml` defines a Databricks Asset Bundle job chaining 4 tasks, but all 4 currently point at the same single notebook path (since this project uses one notebook for all layers, not 4 separate ones). Before deploying, either simplify `job.yml` to one task, or split the notebook into per-layer notebooks matching the task names. Also needs a real `warehouse_id` and a real notification email filled in (currently placeholders).
+Nothing is broken or blocking — the project (both notebooks) fully works and is pushed. These are optional next steps that were offered but not yet chosen:
+1. **Test the quarantine/DQ path** on the main pipeline — deliberately introduce a bad row (e.g. negative quantity, invalid `side`) into a CSV, re-upload, re-run `01_batch_pipeline`, and confirm `Quarantined rows` goes above 0 while reconciliation still holds `True`.
+2. **Deploy `01_batch_pipeline` as a scheduled job** — `resources/job.yml` defines a Databricks Asset Bundle job chaining 4 tasks, but all 4 currently point at the same single notebook path (since this project uses one notebook for all layers, not 4 separate ones). Before deploying, either simplify `job.yml` to one task, or split the notebook into per-layer notebooks matching the task names. Also needs a real `warehouse_id` and a real notification email filled in (currently placeholders).
 3. Nothing else is pending — this is a genuinely optional "continue if you want to go further" list, not unfinished work.
 
 ## To continue on your personal laptop
