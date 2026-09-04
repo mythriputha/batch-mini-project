@@ -83,12 +83,22 @@ A hands-on Delta Lake feature walkthrough, built directly in the `batch-mini-pro
 
 - SQL query `batch_mini_project_validation` is now saved as `src/batch_mini_project_validation.dbquery.ipynb` and pushed to GitHub — no longer a workspace-only artifact as earlier notes said.
 
+## Scheduled job: DONE, deployed via UI (not via CLI bundle deploy)
+
+`batch-mini-project-etl` was created directly in the Databricks **Jobs & Pipelines** UI (the CLI/Asset Bundle route was tried but the user declined to install the Databricks CLI on this office PC, so bundle deploy was abandoned in favor of manual UI job creation). Two tasks:
+- `run_pipeline` — runs `01_batch_pipeline` notebook on Serverless compute, with `catalog=dbx_batch_mini_ws`, `schema=batch_mini_project`, `volume=landing` as parameters.
+- `quality_gate` — runs the saved `batch_mini_project_validation` SQL query on `validation-warehouse`, depends on `run_pipeline`.
+
+Tested with 4 manual "Run now" triggers — **all 4 succeeded** (2m36s–7m47s runtime). The daily 6 AM UTC schedule exists but is left **Paused** by choice — trigger manually via "Run now" instead of relying on the schedule, unless you explicitly activate it later (Tasks tab → Schedules & Triggers).
+
+**Note on `databricks.yml` / `resources/job.yml` / `sql/validation_scheduled.sql`:** these 3 files exist in the repo as Infrastructure-as-Code *reference* (what a CLI-based bundle deploy would look like), but the **live job running in the workspace was created by hand in the UI**, not by `databricks bundle deploy`. The two aren't automatically in sync — if you later edit the job in the UI, these files won't reflect that unless updated manually, and vice versa.
+
 ## What's NOT done yet / open options
 
-Nothing is broken or blocking — the project (both notebooks) fully works and is pushed. These are optional next steps that were offered but not yet chosen:
-1. **Test the quarantine/DQ path** on the main pipeline — deliberately introduce a bad row (e.g. negative quantity, invalid `side`) into a CSV, re-upload, re-run `01_batch_pipeline`, and confirm `Quarantined rows` goes above 0 while reconciliation still holds `True`.
-2. **Deploy `01_batch_pipeline` as a scheduled job** — `resources/job.yml` defines a Databricks Asset Bundle job chaining 4 tasks, but all 4 currently point at the same single notebook path (since this project uses one notebook for all layers, not 4 separate ones). Before deploying, either simplify `job.yml` to one task, or split the notebook into per-layer notebooks matching the task names. Also needs a real `warehouse_id` and a real notification email filled in (currently placeholders).
-3. Nothing else is pending — this is a genuinely optional "continue if you want to go further" list, not unfinished work.
+Nothing is broken or blocking — the project is considered **complete**. One item was explicitly declined:
+- **Quarantine/DQ live-data test** — offered, but the user chose to skip it. Not needed to consider this project done.
+
+No other open items remain from the original scope.
 
 ## To continue on your personal laptop
 
